@@ -1,10 +1,10 @@
 use std::{
     collections::HashMap,
-    fs::File,
+    fs::{write, File},
     io::{BufRead, BufReader},
 };
 
-use chrono::{DateTime, Days, Local, NaiveDate, NaiveDateTime, NaiveTime};
+use chrono::{Days, Duration, Local, NaiveDate, NaiveDateTime, NaiveTime};
 use icalendar::{Calendar, Component, Event, EventLike};
 
 fn main() {
@@ -38,23 +38,23 @@ fn main() {
     .into_iter()
     .collect();
 
-    let mut current_date = start_date.clone();
+    let mut current_date = start_date;
     let mut calendar = Calendar::new();
     let mut is_even = true;
 
     while current_date <= end_date {
         let current_week = if is_even { &even_week } else { &odd_week };
-        for d in &lines[0] {
-            let (start, end) = *current_week.get(d.as_str()).expect("Could not find day");
+        for d in &lines[1] {
+            let (start, end) = *current_week.get(d.as_str()).unwrap_or_else(|| panic!("Could not find day with {}", d));
             let start_time =
                 NaiveTime::parse_from_str(start, "%H:%M").expect("Failed to parse start time");
             let end_time =
-                NaiveTime::parse_from_str(start, "%H:%M").expect("Failed to parse end time");
+                NaiveTime::parse_from_str(end, "%H:%M").expect("Failed to parse end time");
 
             let end_date = if end_time < start_time {
                 current_date.checked_add_days(Days::new(1)).unwrap()
             } else {
-                current_date.clone()
+                current_date
             };
 
             let start_dt = NaiveDateTime::new(current_date, start_time)
@@ -67,11 +67,18 @@ fn main() {
 
             calendar.push(
                 Event::new()
-                    .summary(&boat)
+                    .summary(boat)
                     .starts(start_dt.to_utc())
                     .ends(end_dt.to_utc())
                     .done(),
             );
+
+            current_date += Duration::days(1)
         }
+        current_date += Duration::days(7);
+        is_even = !is_even;
     }
+
+    calendar.done();
+    write("out.ics", calendar.to_string()).unwrap();
 }
