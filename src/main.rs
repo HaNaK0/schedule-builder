@@ -79,6 +79,5 @@ fn main() {
         is_even = !is_even;
     }
 
-    calendar.done();
-    write("out.ics", calendar.to_string()).unwrap();
+    write("out.ics", calendar.done().to_string()).unwrap();
 }
